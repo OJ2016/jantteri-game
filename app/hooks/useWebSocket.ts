@@ -2,13 +2,22 @@ import { useEffect, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 export function useWebSocket(url: string, room?: string) {
-    const [messages, setMessages] = useState<string[]>([]);
-    const [status, setStatus] = useState<'Connecting' | 'Connected' | 'Disconnected'>('Connecting');
+    const [status, setStatus] = useState<'Connecting' | 'Connected' | 'Disconnected'>('Disconnected');
     const [socket, setSocket] = useState<Socket | null>(null);
 
     useEffect(() => {
+        // Don't create connection if no URL provided
+        if (!url) {
+            setSocket(null);
+            setStatus('Disconnected');
+            return;
+        }
+
+        setStatus('Connecting');
+
         // Create Socket.IO connection
         const socketConnection = io(url);
+
         setSocket(socketConnection);
 
         socketConnection.on('connect', () => {
@@ -24,33 +33,19 @@ export function useWebSocket(url: string, room?: string) {
             setStatus('Disconnected');
         });
 
-        // Listen for status messages
-        socketConnection.on('status', (data) => {
-            setMessages(prev => [...prev, `Status: ${data.message}`]);
-        });
-
-        // Listen for console output (this is what your game sends)
-        socketConnection.on('console_output', (data) => {
-            setMessages(prev => [...prev, data.message || data]);
-        });
-
-        // Listen for any other messages
-        socketConnection.on('message', (data) => {
-            setMessages(prev => [...prev, JSON.stringify(data)]);
-        });
-
-        // Listen for errors
-        socketConnection.on('error', (data) => {
-            setMessages(prev => [...prev, `Error: ${data.message}`]);
+        socketConnection.on('connect_error', () => {
+            setStatus('Disconnected');
         });
 
         return () => {
-            if (room) {
-                socketConnection.emit('leave_game', { game_id: room });
+            if (socketConnection) {
+                if (room) {
+                    socketConnection.emit('leave_game', { game_id: room });
+                }
+                socketConnection.disconnect();
             }
-            socketConnection.disconnect();
         };
     }, [url, room]);
 
-    return { messages, status, socket };
+    return { status, socket };
 }

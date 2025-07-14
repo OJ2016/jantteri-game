@@ -1,23 +1,118 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
+import {
+    jantteri_event,
+    jantteri_state,
+    jantteri_config,
+    jantteri_hit_debug,
+    jantteri_pid_debug,
+    jantteri_event_type,
+    jantteri_target_state
+} from '../../jantteri-messages/build/typescript/jantteri_messages';
 
 export default function Test() {
     const [gameId, setGameId] = useState('VVUKUI');
     const [inputValue, setInputValue] = useState('VVUKUI');
     const [isConnected, setIsConnected] = useState(false);
+    const [messages, setMessages] = useState<string[]>([]);
 
-    const { messages, status } = useWebSocket(
+    // Message formatters
+    const formatters = {
+        event: (data: jantteri_event) => {
+            const eventName = jantteri_event_type[data.event] || `UNKNOWN(${data.event})`;
+            return `Device ${data.deviceId}: ${eventName} (${new Date(data.timestamp * 1000).toLocaleTimeString()})`;
+        },
+
+        state: (data: jantteri_state) => {
+            const stateName = jantteri_target_state[data.targetState] || `UNKNOWN(${data.targetState})`;
+            return `Target State: ${stateName}`;
+        },
+
+        config: (data: jantteri_config) => {
+            return `Config: Active=${data.activePotVal}, Inactive=${data.inactivePotVal}, Colors=[${data.color1}, ${data.color2}]`;
+        },
+
+        hit_debug: (data: jantteri_hit_debug) => {
+            return `Hit Debug: Count=${data.hitCount}, L=${data.hitTimesLeft?.length || 0}, C=${data.hitTimesCenter?.length || 0}, R=${data.hitTimesRight?.length || 0}`;
+        },
+
+        pid_debug: (data: jantteri_pid_debug) => {
+            return `PID: Pos=${data.pos.toFixed(2)}, Speed=${data.spd.toFixed(2)}, Target=${data.posSetPoint.toFixed(2)}`;
+        }
+    };
+
+    const { status, socket } = useWebSocket(
         isConnected ? 'http://localhost:5000' : '',
         isConnected ? gameId : undefined
     );
 
+    // Handle all Socket.IO event listeners in the component
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleJantteriEvent = (data: jantteri_event) => {
+            const formatted = formatters.event(data);
+            setMessages(prev => [...prev, formatted]);
+        };
+
+        const handleJantteriState = (data: jantteri_state) => {
+            const formatted = formatters.state(data);
+            setMessages(prev => [...prev, formatted]);
+        };
+
+        const handleJantteriConfig = (data: jantteri_config) => {
+            const formatted = formatters.config(data);
+            setMessages(prev => [...prev, formatted]);
+        };
+
+        const handleJantteriHitDebug = (data: jantteri_hit_debug) => {
+            const formatted = formatters.hit_debug(data);
+            setMessages(prev => [...prev, formatted]);
+        };
+
+        const handleJantteriPidDebug = (data: jantteri_pid_debug) => {
+            const formatted = formatters.pid_debug(data);
+            setMessages(prev => [...prev, formatted]);
+        };
+
+        const handleConsoleOutput = (data: any) => {
+            setMessages(prev => [...prev, `Console: ${data.message || JSON.stringify(data)}`]);
+        };
+
+        const handleError = (data: any) => {
+            setMessages(prev => [...prev, `Error: ${data.message || JSON.stringify(data)}`]);
+        };
+
+        // Set up event listeners
+        socket.on('jantteri_event', handleJantteriEvent);
+        socket.on('jantteri_state', handleJantteriState);
+        socket.on('jantteri_config', handleJantteriConfig);
+        socket.on('jantteri_hit_debug', handleJantteriHitDebug);
+        socket.on('jantteri_pid_debug', handleJantteriPidDebug);
+        socket.on('console_output', handleConsoleOutput);
+        socket.on('error', handleError);
+
+        // Cleanup event listeners
+        return () => {
+            socket.off('jantteri_event', handleJantteriEvent);
+            socket.off('jantteri_state', handleJantteriState);
+            socket.off('jantteri_config', handleJantteriConfig);
+            socket.off('jantteri_hit_debug', handleJantteriHitDebug);
+            socket.off('jantteri_pid_debug', handleJantteriPidDebug);
+            socket.off('console_output', handleConsoleOutput);
+            socket.off('error', handleError);
+        };
+    }, [socket]);
+
     const handleConnect = () => {
         setGameId(inputValue);
         setIsConnected(true);
+        setMessages([]); // Clear messages when connecting
     };
 
     const handleDisconnect = () => {
         setIsConnected(false);
+        setMessages([]); // Clear messages when disconnecting
     };
 
     return (
