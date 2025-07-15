@@ -15,6 +15,7 @@ export default function Test() {
     const [inputValue, setInputValue] = useState('VVUKUI');
     const [isConnected, setIsConnected] = useState(false);
     const [messages, setMessages] = useState<string[]>([]);
+    const [isCreatingGame, setIsCreatingGame] = useState(false);
 
     // Message formatters
     const formatters = {
@@ -104,6 +105,31 @@ export default function Test() {
         };
     }, [socket]);
 
+    const createGame = async () => {
+        setIsCreatingGame(true);
+        try {
+            const response = await fetch('http://localhost:5000/create', {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.game_id) {
+                setInputValue(data.game_id);
+                setMessages(prev => [...prev, `Game created successfully: ${data.game_id} (${data.status})`]);
+            }
+        } catch (error) {
+            console.error('Failed to create game:', error);
+            setMessages(prev => [...prev, `Error creating game: ${error instanceof Error ? error.message : 'Unknown error'}`]);
+        } finally {
+            setIsCreatingGame(false);
+        }
+    };
+
     const handleConnect = () => {
         setGameId(inputValue);
         setIsConnected(true);
@@ -124,7 +150,7 @@ export default function Test() {
                 <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
                     Game ID:
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 mb-2">
                     <input
                         type="text"
                         value={inputValue}
@@ -150,6 +176,15 @@ export default function Test() {
                             Disconnect
                         </button>
                     )}
+                </div>
+                <div className="flex justify-center">
+                    <button
+                        onClick={createGame}
+                        disabled={isConnected || isCreatingGame}
+                        className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        {isCreatingGame ? 'Creating...' : 'Create New Game'}
+                    </button>
                 </div>
             </div>
 
