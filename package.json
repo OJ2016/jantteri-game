@@ -1,5 +1,5 @@
 {
-    "name": "jantteri-game",
+  "name": "jantteri-game",
     "private": true,
     "scripts": {
         "proto:build": "./protobuild.sh",
