@@ -8,7 +8,7 @@ import {
     jantteri_pid_debug,
     jantteri_event_type,
     jantteri_target_state
-} from '../../jantteri-messages/build/typescript/jantteri_messages';
+} from '../../protobuild/jantteri_messages';
 
 export default function Test() {
     const [gameId, setGameId] = useState('VVUKUI');

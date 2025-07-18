@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+enum jantteri_target_state {
+  UNKNOWN = 0;
+  INACTIVE = 100;
+  ACTIVE = 200;
+}
+
+enum jantteri_event_type {
+  NO_EVENT = 0;
+
+  // Command request events (1-99)
+  REBOOT_REQUEST = 1;
+  ACTIVATE_REQUEST = 3;
+  DEACTIVATE_REQUEST = 4;
+  SEND_LOGS_REQUEST = 8;
+  PING_REQUEST = 9;
+
+  // Sensor events (100-199)
+  HIT_DETECTED = 100;
+  NO_HIT_DETECTED = 101;
+  ACTIVATED = 102;
+  ACTIVATING = 103; // This is used to indicate that the device is in the
+                    // process of activating
+  DEACTIVATED = 104;
+  DEACTIVATING = 105; // This is used to indicate that the device is in the
+                      // process of deactivating
+
+  // Setup events
+  CALIBRATE_REQUEST = 200;
+  PID_SAVE_REQUEST = 201;
+  BOOT_TO_BOOTLOADER_REQUEST = 202;
+  SEND_CONFIG_REQUEST = 203;
+
+  // Debug events
+  DEBUG_ENABLE_REQUEST = 1000;
+  DEBUG_DISABLE_REQUEST = 1001;
+}
+
+message jantteri_config {
+  float active_pot_val = 1;
+  float inactive_pot_val = 2;
+  uint32 color_1 = 3;
+  uint32 color_2 = 4;
+  float motor_min_speed = 5;
+  float pos_pid_p = 6;
+  float pos_pid_i = 7;
+  float pos_pid_d = 8;
+  float spd_pid_p = 9;
+  float spd_pid_i = 10;
+  float spd_pid_d = 11;
+  float spd_pid_ff = 12;
+}
+
+message jantteri_event {
+  uint32 device_id =
+      1; // Unique identifier for the device that generated the event
+  jantteri_event_type event =
+      2; // Type of the event, e.g., HIT_DETECTED, REBOOT_REQUEST, etc.
+  uint32 timestamp = 3; // Timestamp in seconds since the epoch
+  float delay = 4;      // Delay in seconds before the event should be processed
+}
+
+message jantteri_hit_debug {
+  uint32 hit_count = 1;
+  repeated uint32 hit_times_left = 2;
+  repeated uint32 hit_times_center = 3;
+  repeated uint32 hit_times_right = 4;
+  repeated int32 acceleration_x = 5;
+  repeated int32 acceleration_y = 6;
+  repeated int32 acceleration_z = 7;
+}
+
+message jantteri_pid_debug {
+  float pos = 1;
+  float pos_pid_p = 2;
+  float pos_pid_i = 3;
+  float pos_pid_d = 4;
+  float pos_set_point = 6;
+  float spd = 7;
+  float spd_pid_p = 8;
+  float spd_pid_i = 9;
+  float spd_pid_d = 10;
+  float spd_pid_ff = 11;
+  float spd_set_point = 12;
+}
+
+// State information is used to run the game logic and to visualize the state of
+// the game
+message jantteri_state { jantteri_target_state target_state = 2; }
