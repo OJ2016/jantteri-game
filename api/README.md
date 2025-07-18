@@ -12,8 +12,8 @@ api/
 ```
 
 ## Shared Dependencies
-- Protobuf definitions: `../jantteri-messages/`
-- Runtime dependency: `../node_modules/@protobuf-ts/runtime`
+- Protobuf definitions: `./protobuild/jantteri_messages_pb2.py`
+- Generated from: `../proto/jantteri_messages.proto`
 
 ## Development
 ```bash

@@ -33,7 +33,7 @@ jantteri-game/
 # Install web dependencies
 npm run install:web
 
-# Install API dependencies (when implemented)
+# Install API dependencies
 npm run install:api
 
 # Build protobuf files
@@ -76,7 +76,7 @@ This generates:
 ## Access URLs
 
 - **Frontend**: http://localhost:5173/
-- **Backend**: http://localhost:5000/ (when implemented)
+- **Backend**: http://localhost:5000/
 
 ## Features
 
@@ -86,7 +86,7 @@ This generates:
 - 🗺️ Interactive maps with Leaflet
 - 📦 Protobuf for type-safe communication
 - 🎉 TailwindCSS for styling
-- 🐍 Flask backend (planned)
+- 🐍 Flask backend with Lua scripting engine
 
 ## Building for Production
 
