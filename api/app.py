@@ -1,16 +1,67 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, Response
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS
 from game_controller import GameController
+import os
+import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Create Flask application instance
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 CORS(app)  # Enable CORS for all routes
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Create GameController instance
 game_controller = GameController(socketio)
+
+# MML API configuration
+MML_API_KEY = os.getenv('MML_API_KEY')
+MML_WMTS_BASE_URL = 'https://avoin-karttakuva.maanmittauslaitos.fi/avoin/wmts/1.0.0'
+
+@app.route('/map-tiles/<int:z>/<int:x>/<int:y>.png', methods=['GET'])
+def proxy_mml_tiles(z, x, y):
+    """
+    Proxy MML map tiles through our API using official MML WMTS
+    """
+    if not MML_API_KEY:
+        print("ERROR: MML API key not configured")
+        return jsonify({'error': 'MML API key not configured'}), 500
+    
+    try:
+        # MML WMTS tile URL structure
+        # Layer: maastokartta (topographic map)
+        # TileMatrixSet: WGS84_Pseudo-Mercator (note the hyphen!)
+        # Format: image/png
+        url = f"{MML_WMTS_BASE_URL}/maastokartta/default/WGS84_Pseudo-Mercator/{z}/{y}/{x}.png"
+        
+        params = {
+            'api-key': MML_API_KEY
+        }
+        
+        response = requests.get(url, params=params, timeout=30)
+        
+        if response.status_code != 200:
+            print(f"ERROR: Failed to fetch tile z={z}, x={x}, y={y} - Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            return Response(
+                response.content,
+                content_type='image/png',
+                headers={
+                    'Cache-Control': 'public, max-age=3600',
+                    'Access-Control-Allow-Origin': '*'
+                }
+            )
+        else:
+            return Response(f'Tile not found: {response.status_code}', status=404)
+            
+    except requests.exceptions.RequestException as e:
+        print(f"ERROR: Failed to fetch tile - {str(e)}")
+        return jsonify({'error': f'Failed to fetch tile: {str(e)}'}), 500
 
 @app.route('/', methods=['GET'])
 def root():

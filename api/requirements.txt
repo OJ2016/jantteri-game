@@ -3,3 +3,5 @@ lupa
 Flask-SocketIO
 Flask-CORS
 protobuf
+python-dotenv
+requests

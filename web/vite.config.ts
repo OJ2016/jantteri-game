@@ -6,9 +6,9 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
   server: {
-    // Future: Add proxy for Flask API here
+    // Proxy for Flask API
     proxy: {
-      '/api': {
+      '/map-tiles': {
         target: 'http://localhost:5000',
         changeOrigin: true,
       }
