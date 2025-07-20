@@ -16,6 +16,7 @@ export default function Test() {
     const [isConnected, setIsConnected] = useState(false);
     const [messages, setMessages] = useState<string[]>([]);
     const [isCreatingGame, setIsCreatingGame] = useState(false);
+    const [isEndingGame, setIsEndingGame] = useState(false);
 
     // Message formatters
     const formatters = {
@@ -42,7 +43,7 @@ export default function Test() {
         }
     };
 
-    const { status, socket } = useWebSocket(
+    const { status, socket, disconnect } = useWebSocket(
         isConnected ? 'http://localhost:5000' : '',
         isConnected ? gameId : undefined
     );
@@ -81,7 +82,15 @@ export default function Test() {
         };
 
         const handleError = (data: any) => {
-            setMessages(prev => [...prev, `Error: ${data.message || JSON.stringify(data)}`]);
+            const errorMessage = data.message || JSON.stringify(data);
+            setMessages(prev => [...prev, `Error: ${errorMessage}`]);
+
+            // If game not found, automatically disconnect
+            if (data.message === 'Game not found') {
+                disconnect(); // Use the disconnect function from the hook
+                setIsConnected(false);
+                setMessages(prev => [...prev, 'Automatically disconnected due to game not found']);
+            }
         };
 
         // Set up event listeners
@@ -121,12 +130,50 @@ export default function Test() {
             if (data.game_id) {
                 setInputValue(data.game_id);
                 setMessages(prev => [...prev, `Game created successfully: ${data.game_id} (${data.status})`]);
+
+                // Automatically connect to the newly created game
+                setGameId(data.game_id);
+                setIsConnected(true);
+                setMessages(prev => [...prev, `Auto-connecting to game: ${data.game_id}`]);
             }
         } catch (error) {
             console.error('Failed to create game:', error);
             setMessages(prev => [...prev, `Error creating game: ${error instanceof Error ? error.message : 'Unknown error'}`]);
         } finally {
             setIsCreatingGame(false);
+        }
+    };
+
+    const endGame = async () => {
+        if (!gameId || !gameId.trim()) {
+            setMessages(prev => [...prev, 'Error: No game ID specified']);
+            return;
+        }
+
+        setIsEndingGame(true);
+        try {
+            const response = await fetch(`http://localhost:5000/${gameId}/end`, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.message) {
+                setMessages(prev => [...prev, `Game ended: ${data.message} (${data.status})`]);
+                // Disconnect from the ended game
+                if (isConnected) {
+                    handleDisconnect();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to end game:', error);
+            setMessages(prev => [...prev, `Error ending game: ${error instanceof Error ? error.message : 'Unknown error'}`]);
+        } finally {
+            setIsEndingGame(false);
         }
     };
 
@@ -137,6 +184,7 @@ export default function Test() {
     };
 
     const handleDisconnect = () => {
+        disconnect(); // Use the disconnect function from the hook
         setIsConnected(false);
         setMessages([]); // Clear messages when disconnecting
     };
@@ -177,13 +225,20 @@ export default function Test() {
                         </button>
                     )}
                 </div>
-                <div className="flex justify-center">
+                <div className="flex justify-center gap-2">
                     <button
                         onClick={createGame}
                         disabled={isConnected || isCreatingGame}
                         className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                         {isCreatingGame ? 'Creating...' : 'Create New Game'}
+                    </button>
+                    <button
+                        onClick={endGame}
+                        disabled={isEndingGame || !isConnected}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    >
+                        {isEndingGame ? 'Ending...' : 'End Game'}
                     </button>
                 </div>
             </div>

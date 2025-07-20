@@ -47,5 +47,14 @@ export function useWebSocket(url: string, room?: string) {
         };
     }, [url, room]);
 
-    return { status, socket };
+    const disconnect = () => {
+        if (socket) {
+            if (room) {
+                socket.emit('leave_game', { game_id: room });
+            }
+            socket.disconnect();
+        }
+    };
+
+    return { status, socket, disconnect };
 }
